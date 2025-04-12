@@ -1,6 +1,7 @@
 package com.terminators.FoodDelivery.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 
 @Entity
@@ -15,11 +16,16 @@ public class Restaurant {
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
+    @NotBlank(message = "Name is mandatory")
     @Column(nullable = false)
     private String name;
 
+    @NotBlank(message = "Location is mandatory")
     @Column(nullable = false)
     private String location;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 
     @Column(nullable = false)
     private String status = "ACTIVE";
@@ -39,6 +45,8 @@ public class Restaurant {
     public void setName(String name) { this.name = name; }
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
