@@ -19,8 +19,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<String> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body("Invalid data provided: " + ex.getRootCause().getMessage());
+        String message = "Invalid data provided: " + ex.getRootCause().getMessage();
+        if (message.contains("violates not-null constraint")) {
+            message = "Required field is missing: " + ex.getRootCause().getMessage();
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(message);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
