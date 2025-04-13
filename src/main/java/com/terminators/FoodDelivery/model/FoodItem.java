@@ -1,6 +1,8 @@
 package com.terminators.FoodDelivery.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,19 +13,23 @@ public class FoodItem {
     @Column(name = "food_item_id")
     private Long foodItemId;
 
+    @NotBlank(message = "Name is mandatory")
+    @Column(nullable = false)
+    private String name;
+
+    @Column
+    private String description;
+
+    @Positive(message = "Price must be positive")
+    @Column(nullable = false)
+    private Double price;
+
     @ManyToOne
     @JoinColumn(name = "restaurant_id", nullable = false)
     private Restaurant restaurant;
 
-    @Column(nullable = false)
-    private String name;
-
-    private String description;
-
-    @Column(nullable = false)
-    private Double price;
-
-    private Boolean availability = true;
+    @Column(name = "image_url")
+    private String imageUrl;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -34,16 +40,16 @@ public class FoodItem {
     // Getters and Setters
     public Long getFoodItemId() { return foodItemId; }
     public void setFoodItemId(Long foodItemId) { this.foodItemId = foodItemId; }
-    public Restaurant getRestaurant() { return restaurant; }
-    public void setRestaurant(Restaurant restaurant) { this.restaurant = restaurant; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public Double getPrice() { return price; }
     public void setPrice(Double price) { this.price = price; }
-    public Boolean getAvailability() { return availability; }
-    public void setAvailability(Boolean availability) { this.availability = availability; }
+    public Restaurant getRestaurant() { return restaurant; }
+    public void setRestaurant(Restaurant restaurant) { this.restaurant = restaurant; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
