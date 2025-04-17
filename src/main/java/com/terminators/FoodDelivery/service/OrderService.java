@@ -1,9 +1,6 @@
 package com.terminators.FoodDelivery.service;
 
-import com.terminators.FoodDelivery.model.FoodItem;
-import com.terminators.FoodDelivery.model.Order;
-import com.terminators.FoodDelivery.model.OrderItem;
-import com.terminators.FoodDelivery.model.User;
+import com.terminators.FoodDelivery.model.*;
 import com.terminators.FoodDelivery.repository.FoodItemRepository;
 import com.terminators.FoodDelivery.repository.OrderItemRepository;
 import com.terminators.FoodDelivery.repository.OrderRepository;
@@ -15,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class OrderService {
@@ -35,8 +31,29 @@ public class OrderService {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private CartService cartService;
+
+    // Removed @Autowired private CartItem cartItem; as it’s not needed
+
     @Transactional
-    public Order createOrder(Long restaurantId, Map<Long, Integer> foodItems, String customerEmail) {
+    public Order createOrderFromCart(String customerEmail) {
+        // Fetch cart items
+        List<CartItem> cartItems = cartService.getCart(customerEmail);
+        if (cartItems.isEmpty()) {
+            throw new RuntimeException("Cannot create order: Cart is empty");
+        }
+
+        // Get restaurant ID (cartService already ensures all items are from the same restaurant)
+        Long restaurantId = cartItems.get(0).getFoodItem().getRestaurant().getRestaurantId();
+
+        // Validate restaurant
+        var restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found with id: " + restaurantId));
+        if (!"ACTIVE".equals(restaurant.getStatus())) {
+            throw new RuntimeException("Restaurant is not accepting orders");
+        }
+
         // Fetch and validate customer
         User customer = userService.getUserByEmail(customerEmail);
         if (customer == null) {
@@ -45,11 +62,6 @@ public class OrderService {
         if (!"CUSTOMER".equals(customer.getRole())) {
             throw new RuntimeException("Only customers can place orders");
         }
-        System.out.println("Customer fetched: ID=" + customer.getUserId() + ", Email=" + customer.getEmail()); // Debug
-
-        // Fetch and validate restaurant
-        var restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found with id: " + restaurantId));
 
         // Initialize order
         Order order = new Order();
@@ -59,22 +71,15 @@ public class OrderService {
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
 
-        // Process food items
+        // Process cart items
         double totalPrice = 0.0;
         List<OrderItem> orderItems = new ArrayList<>();
-        for (Map.Entry<Long, Integer> entry : foodItems.entrySet()) {
-            Long foodItemId = entry.getKey();
-            Integer quantity = entry.getValue();
+        for (CartItem cartItem : cartItems) {
+            FoodItem foodItem = cartItem.getFoodItem();
+            Integer quantity = cartItem.getQuantity();
 
             if (quantity <= 0) {
-                throw new RuntimeException("Quantity must be positive for food item ID: " + foodItemId);
-            }
-
-            FoodItem foodItem = foodItemRepository.findById(foodItemId)
-                    .orElseThrow(() -> new RuntimeException("Food item not found with id: " + foodItemId));
-
-            if (!foodItem.getRestaurant().getRestaurantId().equals(restaurantId)) {
-                throw new RuntimeException("Food item ID " + foodItemId + " does not belong to restaurant ID " + restaurantId);
+                throw new RuntimeException("Invalid quantity for food item ID: " + foodItem.getFoodItemId());
             }
 
             OrderItem orderItem = new OrderItem();
@@ -87,8 +92,12 @@ public class OrderService {
         }
 
         order.setTotalPrice(totalPrice);
-        System.out.println("Order before save: CustomerID=" + (order.getCustomer() != null ? order.getCustomer().getUserId() : "null")); // Debug
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        // Clear cart after successful order creation
+        cartService.clearCart(customerEmail);
+
+        return savedOrder;
     }
 
     public List<Order> getCustomerOrders(String customerEmail) {
@@ -127,5 +136,10 @@ public class OrderService {
         order.setStatus(newStatus);
         order.setUpdatedAt(LocalDateTime.now());
         return orderRepository.save(order);
+    }
+
+    public Order getOrder(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
     }
 }
