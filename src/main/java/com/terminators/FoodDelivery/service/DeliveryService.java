@@ -1,0 +1,69 @@
+package com.terminators.FoodDelivery.service;
+
+import com.terminators.FoodDelivery.model.Delivery;
+import com.terminators.FoodDelivery.model.Order;
+import com.terminators.FoodDelivery.model.User;
+import com.terminators.FoodDelivery.repository.DeliveryRepository;
+import com.terminators.FoodDelivery.repository.OrderRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+public class DeliveryService {
+    @Autowired
+    private DeliveryRepository deliveryRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private UserService userService;
+
+    @Transactional
+    public Delivery createDelivery(Long orderId, String deliveryAddress, String customerEmail) {
+        User customer = userService.getUserByEmail(customerEmail);
+        if (customer == null) throw new RuntimeException("User not found with email: " + customerEmail);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+        Delivery delivery = new Delivery();
+        delivery.setOrder(order);
+        delivery.setDeliveryAddress(deliveryAddress);
+        return deliveryRepository.save(delivery);
+    }
+
+    @Transactional
+    public Delivery assignDeliveryPerson(Long deliveryId, String deliveryPersonEmail, String adminEmail) {
+        User admin = userService.getUserByEmail(adminEmail);
+        if (admin == null || !"ADMIN".equals(admin.getRole())) throw new RuntimeException("Unauthorized access: Admin required");
+        User deliveryPerson = userService.getUserByEmail(deliveryPersonEmail);
+        if (deliveryPerson == null || !"DELIVERY_PERSON".equals(deliveryPerson.getRole())) throw new RuntimeException("Invalid delivery person");
+
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new RuntimeException("Delivery not found with id: " + deliveryId));
+        delivery.setDeliveryPerson(deliveryPerson);
+        delivery.setStatus(Delivery.DeliveryStatus.ASSIGNED);
+        delivery.setUpdatedAt(LocalDateTime.now());
+        return deliveryRepository.save(delivery);
+    }
+
+    @Transactional
+    public Delivery updateStatus(Long deliveryId, Delivery.DeliveryStatus status, String updaterEmail) {
+        User updater = userService.getUserByEmail(updaterEmail);
+        if (updater == null || !("ADMIN".equals(updater.getRole()) || "RESTAURANT_OWNER".equals(updater.getRole())))
+            throw new RuntimeException("Unauthorized access: Admin or restaurant owner required");
+
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new RuntimeException("Delivery not found with id: " + deliveryId));
+        delivery.setStatus(status);
+        delivery.setUpdatedAt(LocalDateTime.now());
+        return deliveryRepository.save(delivery);
+    }
+
+    public Delivery getDelivery(Long orderId) {
+        return deliveryRepository.findByOrderOrderId(orderId);
+    }
+}
