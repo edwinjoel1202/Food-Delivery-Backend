@@ -12,6 +12,7 @@ import java.util.List;
 
 @Service
 public class OrderService {
+
     @Autowired
     private OrderRepository orderRepository;
 
@@ -78,6 +79,32 @@ public class OrderService {
 
         cartService.clearCart(customerEmail);
         return savedOrder;
+    }
+
+    @Transactional
+    public Order cancelOrder(Long orderId, String customerEmail) {
+        User customer = userService.getUserByEmail(customerEmail);
+        if (customer == null) throw new RuntimeException("User not found with email: " + customerEmail);
+        if (!"CUSTOMER".equals(customer.getRole())) throw new RuntimeException("Only customers can cancel orders");
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        if (!order.getCustomer().getUserId().equals(customer.getUserId())) throw new RuntimeException("You can only cancel your own orders");
+
+        // Allow cancellation only if the order is in PENDING status
+        if (order.getStatus() != Order.OrderStatus.PENDING) throw new RuntimeException("Order cannot be cancelled at this stage");
+
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        order.setUpdatedAt(LocalDateTime.now());
+
+        // Update associated delivery
+        Delivery delivery = deliveryService.getDelivery(orderId);
+        if (delivery != null) {
+            delivery.setStatus(Delivery.DeliveryStatus.CANCELLED);
+            delivery.setUpdatedAt(LocalDateTime.now());
+        }
+
+        return orderRepository.save(order);
     }
 
     public List<Order> getCustomerOrders(String customerEmail) {

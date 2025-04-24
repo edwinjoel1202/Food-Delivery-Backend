@@ -32,7 +32,7 @@ public class Delivery {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public enum DeliveryStatus {
-        PENDING, ASSIGNED, IN_TRANSIT, DELIVERED
+        PENDING, ASSIGNED, IN_TRANSIT, DELIVERED, CANCELLED
     }
 
     // Getters and Setters

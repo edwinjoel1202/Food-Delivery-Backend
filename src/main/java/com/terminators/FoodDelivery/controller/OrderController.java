@@ -65,6 +65,14 @@ public class OrderController {
         return ResponseEntity.ok(new OrderResponseDTO(order));
     }
 
+    @PutMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<OrderResponseDTO> cancelOrder(@PathVariable("id") Long orderId,
+                                                        @AuthenticationPrincipal UserDetails userDetails) {
+        Order order = orderService.cancelOrder(orderId, userDetails.getUsername());
+        return ResponseEntity.ok(new OrderResponseDTO(order));
+    }
+
     // DTO for status update
     public static class StatusUpdateRequest {
         private Order.OrderStatus status;
