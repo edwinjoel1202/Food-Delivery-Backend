@@ -34,6 +34,9 @@ public class OrderService {
     @Autowired
     private DeliveryService deliveryService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Transactional
     public Order createOrderFromCart(String customerEmail) {
         List<CartItem> cartItems = cartService.getCart(customerEmail);
@@ -77,6 +80,22 @@ public class OrderService {
         if (deliveryAddress == null || deliveryAddress.trim().isEmpty()) throw new RuntimeException("Delivery address is required");
         deliveryService.createDelivery(savedOrder.getOrderId(), deliveryAddress, customerEmail);
 
+        // Send notification to customer
+        notificationService.sendOrderStatusNotification(
+                customer.getEmail(),
+                customer.getName(),
+                savedOrder.getOrderId().toString(),
+                savedOrder.getStatus().toString()
+        );
+
+        // Send notification to restaurant owner
+        notificationService.sendOrderStatusNotificationToRestaurant(
+                restaurant.getOwner().getEmail(),
+                restaurant.getName(),
+                savedOrder.getOrderId().toString(),
+                savedOrder.getStatus().toString()
+        );
+
         cartService.clearCart(customerEmail);
         return savedOrder;
     }
@@ -91,20 +110,36 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
         if (!order.getCustomer().getUserId().equals(customer.getUserId())) throw new RuntimeException("You can only cancel your own orders");
 
-        // Allow cancellation only if the order is in PENDING status
         if (order.getStatus() != Order.OrderStatus.PENDING) throw new RuntimeException("Order cannot be cancelled at this stage");
 
         order.setStatus(Order.OrderStatus.CANCELLED);
         order.setUpdatedAt(LocalDateTime.now());
 
-        // Update associated delivery
         Delivery delivery = deliveryService.getDelivery(orderId);
         if (delivery != null) {
             delivery.setStatus(Delivery.DeliveryStatus.CANCELLED);
             delivery.setUpdatedAt(LocalDateTime.now());
         }
 
-        return orderRepository.save(order);
+        Order updatedOrder = orderRepository.save(order);
+
+        // Send notification to customer
+        notificationService.sendOrderStatusNotification(
+                customer.getEmail(),
+                customer.getName(),
+                orderId.toString(),
+                updatedOrder.getStatus().toString()
+        );
+
+        // Send notification to restaurant owner
+        notificationService.sendOrderStatusNotificationToRestaurant(
+                order.getRestaurant().getOwner().getEmail(),
+                order.getRestaurant().getName(),
+                orderId.toString(),
+                updatedOrder.getStatus().toString()
+        );
+
+        return updatedOrder;
     }
 
     public List<Order> getCustomerOrders(String customerEmail) {
@@ -128,9 +163,28 @@ public class OrderService {
         User owner = userService.getUserByEmail(ownerEmail);
         if (owner == null) throw new RuntimeException("User not found with email: " + ownerEmail);
         if (!order.getRestaurant().getOwner().getUserId().equals(owner.getUserId())) throw new RuntimeException("You can only update orders for your own restaurants");
+
         order.setStatus(newStatus);
         order.setUpdatedAt(LocalDateTime.now());
-        return orderRepository.save(order);
+        Order updatedOrder = orderRepository.save(order);
+
+        // Send notification to customer
+        notificationService.sendOrderStatusNotification(
+                order.getCustomer().getEmail(),
+                order.getCustomer().getName(),
+                orderId.toString(),
+                newStatus.toString()
+        );
+
+        // Send notification to restaurant owner
+        notificationService.sendOrderStatusNotificationToRestaurant(
+                owner.getEmail(),
+                order.getRestaurant().getName(),
+                orderId.toString(),
+                newStatus.toString()
+        );
+
+        return updatedOrder;
     }
 
     public Order getOrder(Long orderId) {

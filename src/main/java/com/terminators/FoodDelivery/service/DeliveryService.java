@@ -22,6 +22,9 @@ public class DeliveryService {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Transactional
     public Delivery createDelivery(Long orderId, String deliveryAddress, String customerEmail) {
         User customer = userService.getUserByEmail(customerEmail);
@@ -32,7 +35,17 @@ public class DeliveryService {
         Delivery delivery = new Delivery();
         delivery.setOrder(order);
         delivery.setDeliveryAddress(deliveryAddress);
-        return deliveryRepository.save(delivery);
+        Delivery savedDelivery = deliveryRepository.save(delivery);
+
+        // Send notification to customer
+        notificationService.sendDeliveryStatusNotification(
+                customer.getEmail(),
+                customer.getName(),
+                orderId.toString(),
+                savedDelivery.getStatus().toString()
+        );
+
+        return savedDelivery;
     }
 
     @Transactional
@@ -47,7 +60,18 @@ public class DeliveryService {
         delivery.setDeliveryPerson(deliveryPerson);
         delivery.setStatus(Delivery.DeliveryStatus.ASSIGNED);
         delivery.setUpdatedAt(LocalDateTime.now());
-        return deliveryRepository.save(delivery);
+        Delivery updatedDelivery = deliveryRepository.save(delivery);
+
+        // Send notification to customer
+        Order order = updatedDelivery.getOrder();
+        notificationService.sendDeliveryStatusNotification(
+                order.getCustomer().getEmail(),
+                order.getCustomer().getName(),
+                order.getOrderId().toString(),
+                updatedDelivery.getStatus().toString()
+        );
+
+        return updatedDelivery;
     }
 
     @Transactional
@@ -60,7 +84,18 @@ public class DeliveryService {
                 .orElseThrow(() -> new RuntimeException("Delivery not found with id: " + deliveryId));
         delivery.setStatus(status);
         delivery.setUpdatedAt(LocalDateTime.now());
-        return deliveryRepository.save(delivery);
+        Delivery updatedDelivery = deliveryRepository.save(delivery);
+
+        // Send notification to customer
+        Order order = updatedDelivery.getOrder();
+        notificationService.sendDeliveryStatusNotification(
+                order.getCustomer().getEmail(),
+                order.getCustomer().getName(),
+                order.getOrderId().toString(),
+                updatedDelivery.getStatus().toString()
+        );
+
+        return updatedDelivery;
     }
 
     public Delivery getDelivery(Long orderId) {
