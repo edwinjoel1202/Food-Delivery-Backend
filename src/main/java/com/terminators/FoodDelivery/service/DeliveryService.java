@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class DeliveryService {
@@ -96,6 +97,45 @@ public class DeliveryService {
         );
 
         return updatedDelivery;
+    }
+
+    @Transactional
+    public Delivery updateStatusByDeliveryPerson(Long deliveryId, Delivery.DeliveryStatus status, String deliveryPersonEmail) {
+        User deliveryPerson = userService.getUserByEmail(deliveryPersonEmail);
+        if (deliveryPerson == null || !"DELIVERY_PERSON".equals(deliveryPerson.getRole()))
+            throw new RuntimeException("Unauthorized access: Delivery person required");
+
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new RuntimeException("Delivery not found with id: " + deliveryId));
+        if (delivery.getDeliveryPerson() == null || !delivery.getDeliveryPerson().getUserId().equals(deliveryPerson.getUserId()))
+            throw new RuntimeException("You can only update your own assigned deliveries");
+
+        // Validate status transition
+        if (status == Delivery.DeliveryStatus.PENDING || status == Delivery.DeliveryStatus.ASSIGNED)
+            throw new RuntimeException("Delivery person can only update status to IN_TRANSIT, DELIVERED, or CANCELLED");
+        if (delivery.getStatus() == Delivery.DeliveryStatus.DELIVERED || delivery.getStatus() == Delivery.DeliveryStatus.CANCELLED)
+            throw new RuntimeException("Delivery is already completed or cancelled");
+
+        delivery.setStatus(status);
+        delivery.setUpdatedAt(LocalDateTime.now());
+        Delivery updatedDelivery = deliveryRepository.save(delivery);
+
+        // Send notification to customer
+        Order order = updatedDelivery.getOrder();
+        notificationService.sendDeliveryStatusNotification(
+                order.getCustomer().getEmail(),
+                order.getCustomer().getName(),
+                order.getOrderId().toString(),
+                updatedDelivery.getStatus().toString()
+        );
+
+        return updatedDelivery;
+    }
+
+    public List<Delivery> getAssignedDeliveries(String deliveryPersonEmail) {
+        User deliveryPerson = userService.getUserByEmail(deliveryPersonEmail);
+        if (deliveryPerson == null) throw new RuntimeException("User not found with email: " + deliveryPersonEmail);
+        return deliveryRepository.findByDeliveryPersonUserId(deliveryPerson.getUserId());
     }
 
     public Delivery getDelivery(Long orderId) {
