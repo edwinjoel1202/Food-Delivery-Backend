@@ -3,6 +3,7 @@ package com.terminators.FoodDelivery.controller;
 import com.terminators.FoodDelivery.model.Order;
 import com.terminators.FoodDelivery.model.OrderItem;
 import com.terminators.FoodDelivery.service.OrderService;
+import com.terminators.FoodDelivery.service.OrderTrackingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,9 +15,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// Removed OrderRequest DTO as it's no longer needed for direct order creation
-// Kept OrderResponseDTO, OrderItemDTO, and StatusUpdateRequest as they are still relevant
-
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
@@ -24,10 +22,9 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
-    // Removed @Autowired private OrderItem orderItem; as it’s not needed
+    @Autowired
+    private OrderTrackingService orderTrackingService;
 
-    // Removed POST /api/orders endpoint to disable direct order creation
-    // Only allow orders from cart
     @PostMapping("/from-cart")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<OrderResponseDTO> createOrderFromCart(@AuthenticationPrincipal UserDetails userDetails) {
@@ -73,6 +70,14 @@ public class OrderController {
         return ResponseEntity.ok(new OrderResponseDTO(order));
     }
 
+    @GetMapping("/{id}/track")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<OrderTrackingService.OrderTrackingDTO> trackOrder(@PathVariable("id") Long orderId,
+                                                                            @AuthenticationPrincipal UserDetails userDetails) {
+        OrderTrackingService.OrderTrackingDTO trackingDTO = orderTrackingService.getOrderTracking(orderId, userDetails.getUsername());
+        return ResponseEntity.ok(trackingDTO);
+    }
+
     // DTO for status update
     public static class StatusUpdateRequest {
         private Order.OrderStatus status;
@@ -89,6 +94,7 @@ public class OrderController {
         private Long restaurantId;
         private String restaurantName;
         private Double totalPrice;
+        private Double deliveryFee;
         private Order.OrderStatus status;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
@@ -101,6 +107,7 @@ public class OrderController {
             this.restaurantId = order.getRestaurant().getRestaurantId();
             this.restaurantName = order.getRestaurant().getName();
             this.totalPrice = order.getTotalPrice();
+            this.deliveryFee = order.getDeliveryFee();
             this.status = order.getStatus();
             this.createdAt = order.getCreatedAt();
             this.updatedAt = order.getUpdatedAt();
@@ -122,6 +129,8 @@ public class OrderController {
         public void setRestaurantName(String restaurantName) { this.restaurantName = restaurantName; }
         public Double getTotalPrice() { return totalPrice; }
         public void setTotalPrice(Double totalPrice) { this.totalPrice = totalPrice; }
+        public Double getDeliveryFee() { return deliveryFee; }
+        public void setDeliveryFee(Double deliveryFee) { this.deliveryFee = deliveryFee; }
         public Order.OrderStatus getStatus() { return status; }
         public void setStatus(Order.OrderStatus status) { this.status = status; }
         public LocalDateTime getCreatedAt() { return createdAt; }

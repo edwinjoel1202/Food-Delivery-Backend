@@ -10,6 +10,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/deliveries")
@@ -89,6 +91,7 @@ public class DeliveryController {
         private Delivery.DeliveryStatus status;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
+        private List<DeliveryStatusHistoryDTO> statusHistory;
 
         public DeliveryDTO(Delivery delivery) {
             this.deliveryId = delivery.getDeliveryId();
@@ -98,6 +101,9 @@ public class DeliveryController {
             this.status = delivery.getStatus();
             this.createdAt = delivery.getCreatedAt();
             this.updatedAt = delivery.getUpdatedAt();
+            this.statusHistory = delivery.getStatusHistory().stream()
+                    .map(history -> new DeliveryStatusHistoryDTO(history.getStatus(), history.getTimestamp()))
+                    .collect(Collectors.toList());
         }
 
         // Getters and Setters
@@ -115,5 +121,23 @@ public class DeliveryController {
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
         public LocalDateTime getUpdatedAt() { return updatedAt; }
         public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+        public List<DeliveryStatusHistoryDTO> getStatusHistory() { return statusHistory; }
+        public void setStatusHistory(List<DeliveryStatusHistoryDTO> statusHistory) { this.statusHistory = statusHistory; }
+    }
+
+    public static class DeliveryStatusHistoryDTO {
+        private Delivery.DeliveryStatus status;
+        private LocalDateTime timestamp;
+
+        public DeliveryStatusHistoryDTO(Delivery.DeliveryStatus status, LocalDateTime timestamp) {
+            this.status = status;
+            this.timestamp = timestamp;
+        }
+
+        // Getters and Setters
+        public Delivery.DeliveryStatus getStatus() { return status; }
+        public void setStatus(Delivery.DeliveryStatus status) { this.status = status; }
+        public LocalDateTime getTimestamp() { return timestamp; }
+        public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
     }
 }

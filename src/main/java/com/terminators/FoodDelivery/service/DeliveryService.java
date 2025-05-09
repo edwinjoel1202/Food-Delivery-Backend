@@ -36,6 +36,7 @@ public class DeliveryService {
         Delivery delivery = new Delivery();
         delivery.setOrder(order);
         delivery.setDeliveryAddress(deliveryAddress);
+        delivery.addStatusHistory(Delivery.DeliveryStatus.PENDING);
         Delivery savedDelivery = deliveryRepository.save(delivery);
 
         // Send notification to customer
@@ -61,6 +62,7 @@ public class DeliveryService {
         delivery.setDeliveryPerson(deliveryPerson);
         delivery.setStatus(Delivery.DeliveryStatus.ASSIGNED);
         delivery.setUpdatedAt(LocalDateTime.now());
+        delivery.addStatusHistory(Delivery.DeliveryStatus.ASSIGNED);
         Delivery updatedDelivery = deliveryRepository.save(delivery);
 
         // Send notification to customer
@@ -85,6 +87,7 @@ public class DeliveryService {
                 .orElseThrow(() -> new RuntimeException("Delivery not found with id: " + deliveryId));
         delivery.setStatus(status);
         delivery.setUpdatedAt(LocalDateTime.now());
+        delivery.addStatusHistory(status);
         Delivery updatedDelivery = deliveryRepository.save(delivery);
 
         // Send notification to customer
@@ -118,10 +121,24 @@ public class DeliveryService {
 
         delivery.setStatus(status);
         delivery.setUpdatedAt(LocalDateTime.now());
+        delivery.addStatusHistory(status);
         Delivery updatedDelivery = deliveryRepository.save(delivery);
 
-        // Send notification to customer
+        // Update order status if delivery is completed
         Order order = updatedDelivery.getOrder();
+        if (status == Delivery.DeliveryStatus.DELIVERED) {
+            order.setStatus(Order.OrderStatus.DELIVERED);
+            order.setUpdatedAt(LocalDateTime.now());
+            order.addStatusHistory(Order.OrderStatus.DELIVERED);
+            orderRepository.save(order);
+        } else if (status == Delivery.DeliveryStatus.CANCELLED) {
+            order.setStatus(Order.OrderStatus.CANCELLED);
+            order.setUpdatedAt(LocalDateTime.now());
+            order.addStatusHistory(Order.OrderStatus.CANCELLED);
+            orderRepository.save(order);
+        }
+
+        // Send notification to customer
         notificationService.sendDeliveryStatusNotification(
                 order.getCustomer().getEmail(),
                 order.getCustomer().getName(),

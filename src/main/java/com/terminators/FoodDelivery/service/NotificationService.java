@@ -11,36 +11,35 @@ public class NotificationService {
     @Autowired
     private JavaMailSender mailSender;
 
-    public void sendOrderStatusNotification(String toEmail, String customerName, String orderId, String status) {
+    public void sendEmail(String toEmail, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
-        message.setSubject("Order Status Update - Order #" + orderId);
-        message.setText(String.format(
+        message.setSubject(subject);
+        message.setText(body);
+        mailSender.send(message);
+    }
+
+    public void sendOrderStatusNotification(String toEmail, String customerName, String orderId, String status) {
+        String body = String.format(
                 "Dear %s,\n\nYour order #%s has been updated to status: %s.\n\nThank you for choosing FoodDelivery!\n\nBest regards,\nFoodDelivery Team",
                 customerName, orderId, status
-        ));
-        mailSender.send(message);
+        );
+        sendEmail(toEmail, "Order Status Update - Order #" + orderId, body);
     }
 
     public void sendDeliveryStatusNotification(String toEmail, String customerName, String orderId, String deliveryStatus) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(toEmail);
-        message.setSubject("Delivery Status Update - Order #" + orderId);
-        message.setText(String.format(
+        String body = String.format(
                 "Dear %s,\n\nThe delivery for your order #%s has been updated to status: %s.\n\nThank you for choosing FoodDelivery!\n\nBest regards,\nFoodDelivery Team",
                 customerName, orderId, deliveryStatus
-        ));
-        mailSender.send(message);
+        );
+        sendEmail(toEmail, "Delivery Status Update - Order #" + orderId, body);
     }
 
     public void sendOrderStatusNotificationToRestaurant(String toEmail, String restaurantName, String orderId, String status) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(toEmail);
-        message.setSubject("New Order Status Update - Order #" + orderId);
-        message.setText(String.format(
+        String body = String.format(
                 "Dear %s,\n\nOrder #%s has been updated to status: %s.\nPlease check your dashboard for details.\n\nBest regards,\nFoodDelivery Team",
                 restaurantName, orderId, status
-        ));
-        mailSender.send(message);
+        );
+        sendEmail(toEmail, "New Order Status Update - Order #" + orderId, body);
     }
 }

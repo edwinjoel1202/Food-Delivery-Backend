@@ -58,6 +58,9 @@ public class OrderService {
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
 
+        // Add initial status to history
+        order.addStatusHistory(Order.OrderStatus.PENDING);
+
         double totalPrice = 0.0;
         List<OrderItem> orderItems = new ArrayList<>();
         for (CartItem cartItem : cartItems) {
@@ -114,11 +117,13 @@ public class OrderService {
 
         order.setStatus(Order.OrderStatus.CANCELLED);
         order.setUpdatedAt(LocalDateTime.now());
+        order.addStatusHistory(Order.OrderStatus.CANCELLED);
 
         Delivery delivery = deliveryService.getDelivery(orderId);
         if (delivery != null) {
             delivery.setStatus(Delivery.DeliveryStatus.CANCELLED);
             delivery.setUpdatedAt(LocalDateTime.now());
+            delivery.addStatusHistory(Delivery.DeliveryStatus.CANCELLED);
         }
 
         Order updatedOrder = orderRepository.save(order);
@@ -157,6 +162,7 @@ public class OrderService {
         return orderRepository.findByRestaurantRestaurantId(restaurantId);
     }
 
+    @Transactional
     public Order updateOrderStatus(Long orderId, Order.OrderStatus newStatus, String ownerEmail) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
@@ -164,8 +170,14 @@ public class OrderService {
         if (owner == null) throw new RuntimeException("User not found with email: " + ownerEmail);
         if (!order.getRestaurant().getOwner().getUserId().equals(owner.getUserId())) throw new RuntimeException("You can only update orders for your own restaurants");
 
+        if (order.getStatus() == Order.OrderStatus.CANCELLED || order.getStatus() == Order.OrderStatus.DELIVERED) {
+            throw new RuntimeException("Cannot update status of a cancelled or delivered order");
+        }
+
         order.setStatus(newStatus);
         order.setUpdatedAt(LocalDateTime.now());
+        order.addStatusHistory(newStatus);
+
         Order updatedOrder = orderRepository.save(order);
 
         // Send notification to customer

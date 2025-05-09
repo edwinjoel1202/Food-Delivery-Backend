@@ -28,6 +28,9 @@ public class Order {
     @Column(name = "total_price", nullable = false)
     private Double totalPrice;
 
+    @Column(name = "delivery_fee")
+    private Double deliveryFee;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status = OrderStatus.PENDING;
@@ -42,9 +45,12 @@ public class Order {
     @JsonManagedReference
     private List<OrderItem> orderItems = new ArrayList<>();
 
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderStatusHistory> statusHistory = new ArrayList<>();
+
     // Enum for order status
     public enum OrderStatus {
-        PENDING, PREPARING, DELIVERED, CANCELLED
+        PENDING, PREPARING, READY, DELIVERED, CANCELLED
     }
 
     // Getters and Setters
@@ -56,6 +62,8 @@ public class Order {
     public void setRestaurant(Restaurant restaurant) { this.restaurant = restaurant; }
     public Double getTotalPrice() { return totalPrice; }
     public void setTotalPrice(Double totalPrice) { this.totalPrice = totalPrice; }
+    public Double getDeliveryFee() { return deliveryFee; }
+    public void setDeliveryFee(Double deliveryFee) { this.deliveryFee = deliveryFee; }
     public OrderStatus getStatus() { return status; }
     public void setStatus(OrderStatus status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
@@ -64,10 +72,21 @@ public class Order {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public List<OrderItem> getOrderItems() { return orderItems; }
     public void setOrderItems(List<OrderItem> orderItems) { this.orderItems = orderItems; }
+    public List<OrderStatusHistory> getStatusHistory() { return statusHistory; }
+    public void setStatusHistory(List<OrderStatusHistory> statusHistory) { this.statusHistory = statusHistory; }
 
     // Helper method to add an order item
     public void addOrderItem(OrderItem orderItem) {
         orderItems.add(orderItem);
         orderItem.setOrder(this);
+    }
+
+    // Helper method to add status history
+    public void addStatusHistory(OrderStatus status) {
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(this);
+        history.setStatus(status);
+        history.setTimestamp(LocalDateTime.now());
+        statusHistory.add(history);
     }
 }
