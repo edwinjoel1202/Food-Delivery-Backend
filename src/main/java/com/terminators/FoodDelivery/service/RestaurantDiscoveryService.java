@@ -6,6 +6,7 @@ import com.terminators.FoodDelivery.repository.FoodItemRepository;
 import com.terminators.FoodDelivery.repository.RestaurantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,13 +22,17 @@ public class RestaurantDiscoveryService {
     @Autowired
     private FoodItemRepository foodItemRepository;
 
+    @Autowired
+    private RestaurantRatingService ratingService;
+
+    @Transactional(readOnly = true)
     public List<RestaurantDTO> searchRestaurants(String keyword, String cuisineType, String dietaryPreference, String sortBy) {
         List<Restaurant> restaurants;
 
-        // Start with active restaurants
+        // Start with active restaurants, fetch with food items
         if (keyword != null && !keyword.trim().isEmpty()) {
             // Search by keyword in restaurant name or cuisine
-            restaurants = restaurantRepository.findByKeyword(keyword);
+            restaurants = restaurantRepository.findByKeywordWithFoodItems(keyword);
 
             // Also search food items and include their restaurants
             List<FoodItem> foodItems = foodItemRepository.findByKeyword(keyword);
@@ -42,7 +47,7 @@ public class RestaurantDiscoveryService {
             restaurants.addAll(restaurantsFromFoodItems);
             restaurants = restaurants.stream().distinct().collect(Collectors.toList());
         } else {
-            restaurants = restaurantRepository.findByActiveStatus();
+            restaurants = restaurantRepository.findByActiveStatusWithFoodItems();
         }
 
         // Apply filters
@@ -61,18 +66,34 @@ public class RestaurantDiscoveryService {
         // Apply sorting
         if ("name".equalsIgnoreCase(sortBy)) {
             restaurants.sort(Comparator.comparing(Restaurant::getName, String.CASE_INSENSITIVE_ORDER));
+        } else if ("rating".equalsIgnoreCase(sortBy)) {
+            restaurants.sort((r1, r2) -> {
+                RestaurantRatingService.RatingSummary summary1 = ratingService.calculateRatingSummary(r1);
+                RestaurantRatingService.RatingSummary summary2 = ratingService.calculateRatingSummary(r2);
+                return Double.compare(summary2.getAverageRating(), summary1.getAverageRating());
+            });
         }
         // Default sorting is by relevance (no change needed since keyword search already prioritizes)
 
-        return restaurants.stream().map(RestaurantDTO::new).collect(Collectors.toList());
+        return restaurants.stream().map(this::toRestaurantDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<RestaurantDTO> getPopularRestaurants() {
         List<Restaurant> popularRestaurants = restaurantRepository.findPopularRestaurants();
+        // Fetch food items for rating calculation
+        popularRestaurants = popularRestaurants.stream()
+                .map(r -> restaurantRepository.findByIdWithFoodItems(r.getRestaurantId()))
+                .collect(Collectors.toList());
         return popularRestaurants.stream()
                 .limit(10) // Limit to top 10 popular restaurants
-                .map(RestaurantDTO::new)
+                .map(this::toRestaurantDTO)
                 .collect(Collectors.toList());
+    }
+
+    private RestaurantDTO toRestaurantDTO(Restaurant restaurant) {
+        RestaurantRatingService.RatingSummary ratingSummary = ratingService.calculateRatingSummary(restaurant);
+        return new RestaurantDTO(restaurant, ratingSummary.getAverageRating(), ratingSummary.getTotalReviews());
     }
 
     public static class RestaurantDTO {
@@ -82,17 +103,20 @@ public class RestaurantDiscoveryService {
         private String imageUrl;
         private String cuisineType;
         private String dietaryPreference;
+        private double averageRating;
+        private int totalReviews;
 
-        public RestaurantDTO(Restaurant restaurant) {
+        public RestaurantDTO(Restaurant restaurant, double averageRating, int totalReviews) {
             this.restaurantId = restaurant.getRestaurantId();
             this.name = restaurant.getName();
             this.location = restaurant.getLocation();
             this.imageUrl = restaurant.getImageUrl();
             this.cuisineType = restaurant.getCuisineType();
             this.dietaryPreference = restaurant.getDietaryPreference();
+            this.averageRating = averageRating;
+            this.totalReviews = totalReviews;
         }
 
-        // Getters and Setters
         public Long getRestaurantId() { return restaurantId; }
         public void setRestaurantId(Long restaurantId) { this.restaurantId = restaurantId; }
         public String getName() { return name; }
@@ -105,5 +129,9 @@ public class RestaurantDiscoveryService {
         public void setCuisineType(String cuisineType) { this.cuisineType = cuisineType; }
         public String getDietaryPreference() { return dietaryPreference; }
         public void setDietaryPreference(String dietaryPreference) { this.dietaryPreference = dietaryPreference; }
+        public double getAverageRating() { return averageRating; }
+        public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
+        public int getTotalReviews() { return totalReviews; }
+        public void setTotalReviews(int totalReviews) { this.totalReviews = totalReviews; }
     }
 }

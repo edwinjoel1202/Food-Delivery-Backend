@@ -26,4 +26,14 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
     @Query("SELECT r FROM Restaurant r JOIN Order o ON r.restaurantId = o.restaurant.restaurantId WHERE r.status = 'ACTIVE' GROUP BY r ORDER BY COUNT(o) DESC")
     List<Restaurant> findPopularRestaurants();
+
+    // Fetch restaurant with food items only (reviews will be loaded lazily)
+    @Query("SELECT DISTINCT r FROM Restaurant r LEFT JOIN FETCH r.foodItems WHERE r.restaurantId = :restaurantId")
+    Restaurant findByIdWithFoodItems(@Param("restaurantId") Long restaurantId);
+
+    @Query("SELECT DISTINCT r FROM Restaurant r LEFT JOIN FETCH r.foodItems WHERE r.status = 'ACTIVE'")
+    List<Restaurant> findByActiveStatusWithFoodItems();
+
+    @Query("SELECT DISTINCT r FROM Restaurant r LEFT JOIN FETCH r.foodItems WHERE r.status = 'ACTIVE' AND (LOWER(r.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.cuisineType) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    List<Restaurant> findByKeywordWithFoodItems(@Param("keyword") String keyword);
 }
