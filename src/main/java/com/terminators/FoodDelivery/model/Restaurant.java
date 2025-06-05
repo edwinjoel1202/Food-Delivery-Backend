@@ -14,10 +14,6 @@ public class Restaurant {
     @Column(name = "restaurant_id")
     private Long restaurantId;
 
-    @ManyToOne
-    @JoinColumn(name = "owner_id", nullable = false)
-    private User owner;
-
     @NotBlank(message = "Name is mandatory")
     @Column(nullable = false)
     private String name;
@@ -29,14 +25,27 @@ public class Restaurant {
     @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(nullable = false)
-    private String cuisineType; // e.g., Italian, Chinese, Indian
+    @Column(name = "cuisine_type")
+    private String cuisineType;
 
-    @Column(nullable = false)
-    private String dietaryPreference; // e.g., VEGETARIAN, NON_VEGETARIAN, BOTH
+    @Column(name = "dietary_preference")
+    private String dietaryPreference;
 
-    @Column(nullable = false)
+    @Column
     private String status = "ACTIVE";
+
+    @ManyToOne
+    @JoinColumn(name = "owner_id", nullable = false)
+    private User owner;
+
+    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FoodItem> foodItems = new ArrayList<>();
+
+    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Order> orders = new ArrayList<>();
+
+    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FavoriteRestaurant> favoritedBy = new ArrayList<>();
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -44,14 +53,9 @@ public class Restaurant {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<FoodItem> foodItems = new ArrayList<>();
-
     // Getters and Setters
     public Long getRestaurantId() { return restaurantId; }
     public void setRestaurantId(Long restaurantId) { this.restaurantId = restaurantId; }
-    public User getOwner() { return owner; }
-    public void setOwner(User owner) { this.owner = owner; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getLocation() { return location; }
@@ -64,16 +68,16 @@ public class Restaurant {
     public void setDietaryPreference(String dietaryPreference) { this.dietaryPreference = dietaryPreference; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public User getOwner() { return owner; }
+    public void setOwner(User owner) { this.owner = owner; }
+    public List<FoodItem> getFoodItems() { return foodItems; }
+    public void setFoodItems(List<FoodItem> foodItems) { this.foodItems = foodItems; }
+    public List<Order> getOrders() { return orders; }
+    public void setOrders(List<Order> orders) { this.orders = orders; }
+    public List<FavoriteRestaurant> getFavoritedBy() { return favoritedBy; }
+    public void setFavoritedBy(List<FavoriteRestaurant> favoritedBy) { this.favoritedBy = favoritedBy; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    public List<FoodItem> getFoodItems() { return foodItems; }
-    public void setFoodItems(List<FoodItem> foodItems) { this.foodItems = foodItems; }
-
-    // Helper method to add a food item
-    public void addFoodItem(FoodItem foodItem) {
-        foodItems.add(foodItem);
-        foodItem.setRestaurant(this);
-    }
 }
