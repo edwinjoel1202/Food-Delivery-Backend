@@ -53,4 +53,29 @@ public class RestaurantController {
         Restaurant restaurant = restaurantService.updateRestaurant(restaurantId, updatedRestaurant, userDetails.getUsername());
         return ResponseEntity.ok(restaurant);
     }
+
+    @PutMapping("/{id}/coordinates")
+    @PreAuthorize("hasRole('RESTAURANT_OWNER')")
+    public ResponseEntity<Restaurant> updateRestaurantCoordinates(@PathVariable("id") Long restaurantId,
+                                                                  @RequestBody CoordinatesRequest coordinates,
+                                                                  @AuthenticationPrincipal UserDetails userDetails) {
+        Restaurant restaurant = restaurantService.getRestaurantsByOwner(userDetails.getUsername()).stream()
+                .filter(r -> r.getRestaurantId().equals(restaurantId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Restaurant not found or not owned by user"));
+        restaurant.setLatitude(coordinates.getLatitude());
+        restaurant.setLongitude(coordinates.getLongitude());
+        Restaurant updatedRestaurant = restaurantService.updateRestaurant(restaurantId, restaurant, userDetails.getUsername());
+        return ResponseEntity.ok(updatedRestaurant);
+    }
+
+    public static class CoordinatesRequest {
+        private Double latitude;
+        private Double longitude;
+
+        public Double getLatitude() { return latitude; }
+        public void setLatitude(Double latitude) { this.latitude = latitude; }
+        public Double getLongitude() { return longitude; }
+        public void setLongitude(Double longitude) { this.longitude = longitude; }
+    }
 }

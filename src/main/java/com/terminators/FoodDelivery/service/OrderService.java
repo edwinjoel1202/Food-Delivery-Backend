@@ -37,6 +37,9 @@ public class OrderService {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private DistanceService distanceService;
+
     @Transactional
     public Order createOrderFromCart(String customerEmail) {
         List<CartItem> cartItems = cartService.getCart(customerEmail);
@@ -77,6 +80,16 @@ public class OrderService {
         }
 
         order.setTotalPrice(totalPrice);
+
+        // Calculate delivery fee based on coordinates
+        Double deliveryFee = distanceService.calculateDeliveryFee(
+                customer.getLatitude(),
+                customer.getLongitude(),
+                restaurant.getLatitude(),
+                restaurant.getLongitude()
+        );
+        order.setDeliveryFee(deliveryFee);
+
         Order savedOrder = orderRepository.save(order);
 
         String deliveryAddress = customer.getAddress();
