@@ -281,8 +281,8 @@ Please ensure your code follows the project's coding standards and includes appr
 For any questions or feedback, please contact:
 
 - **Email**: edwinjoel1204@gmail.com
-- **GitHub**: [Your GitHub Profile](#)
-- **Project Repository**: [FoodDelivery Repository](#)
+- **GitHub**: [Your GitHub Profile](https://github.com/edwinjoel1202/)
+- **Project Repository**: [FoodDelivery Repository](https://github.com/edwinjoel1202/Food-Delivery-Backend/)
 
 ---
 
